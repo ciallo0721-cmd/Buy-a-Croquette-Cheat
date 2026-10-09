@@ -179,7 +179,8 @@ function New-PluginEntryText {
     $d = '开局资源注入 + 无限可乐饼（380 円 / 99 个）'
     return '{"name":"' + $PluginName + '","status":true,"description":"' + $d +
            '","parameters":{"Starting Gold":"380","Croquette Item ID":"2",' +
-           '"Croquette Amount":"99","Infinite Mode":"always"}}'
+           '"Croquette Amount":"99","Infinite Mode":"always",' +
+           '"Notice Face":"qianxu4","Notice Face Index":"0"}}'
 }
 
 # ---------------------------------------------------------------------------

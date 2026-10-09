@@ -52,7 +52,20 @@ function buildRuntime(params) {
       setupNewGame() {},
       loadGame(id) { return id; }
     },
-    Scene_Map: { prototype: { start() {}, update() {} } }
+    Scene_Map: { prototype: { start() {}, update() {} } },
+    // 声明框钩子所需的桩（本条测试不驱动对白，仅保证插件能正常装载）
+    Game_Interpreter: {
+      prototype: {
+        command101() { return true; },
+        executeCommand() { return true; },
+        setWaitMode() {}
+      }
+    },
+    $gameMessage: {
+      _texts: [], _faceName: '', _faceIndex: 0, _background: 0, _positionType: 2,
+      setFaceImage() {}, setBackground() {}, setPositionType() {},
+      add(t) { this._texts.push(t); }, clear() { this._texts = []; }
+    }
   };
   sandbox.window = sandbox;
   vm.createContext(sandbox);
