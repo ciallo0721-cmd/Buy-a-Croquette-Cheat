@@ -1,0 +1,14 @@
+# 安装/测试产生的临时文件
+_cheat_backup_*/
+*_out.txt
+*_err.txt
+*_test.txt
+*.log
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
