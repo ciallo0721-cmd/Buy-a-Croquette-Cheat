@@ -60,14 +60,16 @@ install.bat -GamePath "I:\SteamLibrary\steamapps\common\Buy a Croquette"
 {
   "name": "KC_InfiniteCroquette",
   "status": true,
-  "description": "开局资源注入 + 无限可乐饼（380 円 / 99 个）",
+  "description": "开局资源注入 + 无限可乐饼 + 线索全收集（380 円 / 99 个）",
   "parameters": {
-    "Starting Gold":     "380",      // 开局金钱
-    "Croquette Item ID": "2",        // 物品 ID
-    "Croquette Amount":  "99",       // 开局数量 / 无限模式保底值
-    "Infinite Mode":     "always",   // always | consume | off
-    "Notice Face":       "qianxu4",  // 开局声明框立绘；填 none 则不显示
-    "Notice Face Index": "0"         // 立绘表情编号（0-7）
+    "Starting Gold":     "380",                    // 开局金钱
+    "Croquette Item ID": "2",                      // 物品 ID
+    "Croquette Amount":  "99",                     // 开局数量 / 无限模式保底值
+    "Infinite Mode":     "always",                 // always | consume | off
+    "Collect All Clues": "true",                   // 开局收集全部「线索」道具
+    "Extra Item IDs":    "11,12,13,14,15,16,17",   // 额外发放的物品 ID（逗号分隔，各 1 个）
+    "Notice Face":       "qianxu4",                // 开局声明框立绘；填 none 则不显示
+    "Notice Face Index": "0"                       // 立绘表情编号（0-7）
   }
 }
 ```
@@ -82,6 +84,30 @@ install.bat -GamePath "I:\SteamLibrary\steamapps\common\Buy a Croquette"
 
 > 提示：`always` 模式下卖可乐饼也不会减少，等于**无限刷钱**。
 > 不想让经济系统崩掉就改成 `consume`。
+
+---
+
+## 开局收集
+
+除了金钱与可乐饼，开局还会把两类物品塞进背包（各 1 个，幂等）：
+
+| 参数 | 默认 | 作用 |
+|---|---|---|
+| `Collect All Clues` | `true` | 自动发放全部名称以「线索」开头的道具（28 件，如「线索:午夜之声」「线索:达摩眼睛A」） |
+| `Extra Item IDs` | `11,12,13,14,15,16,17` | 逐个 ID 发放 1 个，默认即北巷鬼打墙七件套 |
+
+**北巷七件套**（`11~17`）—— 就是那段「鬼打墙」死循环巷子所需的全部道具：
+
+| ID | 物品 | 用途 |
+|---|---|---|
+| 11/12/13/14 | 碎纸片 A / B / C / D | 写明破解步骤：卷帘门 → 买 5 円盒装 → 倒在铁箱旁路灯 → 回头走出 |
+| 15 | 䵴䵔檃褭（2 円瓶装） | 贩卖机商品 |
+| 16 | 䪀㜱斸（5 円盒装） | **破解关键**：买它并倒在铁箱旁的路灯上 |
+| 17 | 鷵䵻㨥䰓（3 円杯装） | 贩卖机商品 |
+
+> 那三个名字的「乱码」是游戏刻意的演出效果（描写「看不懂的东西」），不是编码错误，别去修它。
+
+这两项只往背包塞普通道具，**不碰任何开关 / 变量**，剧情推进依旧由游戏自己判定。
 
 ---
 
@@ -171,7 +197,7 @@ Show Text（指令 101）会吃掉它后面所有 401 文本行，所以直接�
 node tests/plugin_test.js
 ```
 
-用最小 RPG Maker MV 运行时桩离线验证插件行为，共 18 项断言：
+用最小 RPG Maker MV 运行时桩离线验证插件行为，共 32 项断言：
 
 ```
 === 1. 开局注入（Infinite Mode = always） ===
@@ -203,8 +229,26 @@ PASS  读档后物品保持 3 个
 === 6. 玩家收益不被削减 ===
 PASS  赚到 1380 円不被削回 380
 
-结果: 18 通过 / 0 失败
+=== 7. 开局收集：线索全给 + 北巷七件套 ===
+PASS  发出线索 / 碎纸片 A~D / 三件乱码饮料
+PASS  普通物品不被发放
+PASS  重复进地图不叠加线索
+PASS  换队伍后补回线索与七件套
+
+=== 8. Collect All Clues = false ===
+PASS  线索不再发放 / 但仍发放 11~17
+
+=== 9. 自定义 Extra Item IDs ===
+PASS  容错空格与垃圾字符 / 未列出的不发
+
+=== 10. 读档不发收集物品 ===
+PASS  读档后线索与七件套为空
+
+结果: 32 通过 / 0 失败
 ```
+
+另做了一份**用真实 `Items.json` 驱动**的离线核对：
+开局实际发出 36 条物品 = 99 可乐饼 + 28 条线索 + 北巷七件套（11~17），与设计完全一致。
 
 开局声明框另有一套测试，直接拿**游戏真实的 Map002 EV17 指令表**驱动
 从 `rpg_objects.js` 抽出来的真解释器（不是自己写的假流程）：

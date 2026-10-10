@@ -21,6 +21,19 @@ function t(name, cond, extra) {
 // ---------------------------------------------------------------------------
 // 搭一个最小运行时
 // ---------------------------------------------------------------------------
+// 物品表桩：贴近真实的 $dataItems（下标 = id），含线索与北巷七件套
+function makeItems() {
+  const arr = [null];
+  const put = (id, name) => { while (arr.length <= id) arr.push(null); arr[id] = { id, name }; };
+  put(2, '市村可乐饼');
+  put(11, '碎纸片A'); put(12, '碎纸片B'); put(13, '碎纸片C'); put(14, '碎纸片D');
+  put(15, '䵴䵔檃褭'); put(16, '䪀㜱斸'); put(17, '鷵䵻㨥䰓');
+  put(27, '线索:灵异期刊'); put(33, '线索:午夜之声'); put(141, '线索：浇水挂画');
+  put(50, '普通面包');          // 非线索、非额外 ID —— 不该被发放
+  for (let i = 1; i < arr.length; i++) { if (!arr[i]) arr[i] = { id: i, name: '' }; }
+  return arr;
+}
+
 function buildRuntime(params) {
   // Game_Party 桩：只实现本插件用到的成员
   function Game_Party() {
@@ -41,11 +54,12 @@ function buildRuntime(params) {
     this.loseItem(item, 1);      // MV 里 consumeItem 内部就是调 loseItem
   };
 
+  const items = makeItems();
   const sandbox = {
     console,
     Game_Party,
     PluginManager: { parameters: () => params },
-    $dataItems: { 2: { id: 2, name: '市村可乐饼', consumable: true } },
+    $dataItems: items,
     $gameParty: new Game_Party(),
     SceneManager: { _scene: null },
     DataManager: {
@@ -176,6 +190,68 @@ console.log('\n=== 6. 玩家收益不被削减 ===');
   S.$gameParty.gainGold(1000);
   S.Scene_Map.prototype.update.call({});
   t('赚到 1380 円不被削回 380', S.$gameParty.gold() === 1380, 'gold=' + S.$gameParty.gold());
+}
+
+// ===========================================================================
+console.log('\n=== 7. 开局收集：线索全给 + 北巷七件套 ===');
+{
+  const S = buildRuntime(BASE);   // 默认 Collect All Clues=true / Extra IDs=11..17
+  newGame(S);
+  const items = S.$dataItems;
+  const n = id => S.$gameParty.numItems(items[id]);
+
+  t('发出线索:灵异期刊', n(27) === 1);
+  t('发出线索:午夜之声', n(33) === 1);
+  t('发出线索：浇水挂画', n(141) === 1);
+  t('发出碎纸片 A/B/C/D', n(11) === 1 && n(12) === 1 && n(13) === 1 && n(14) === 1);
+  t('发出三件乱码饮料 15/16/17', n(15) === 1 && n(16) === 1 && n(17) === 1);
+  t('普通物品(50)不被发放', n(50) === 0);
+
+  S.Scene_Map.prototype.start.call({});
+  S.Scene_Map.prototype.update.call({});
+  t('重复进地图不叠加线索', n(27) === 1 && n(16) === 1);
+
+  const Game_Party = S.$gameParty.constructor;
+  S.$gameParty = new Game_Party();           // 模拟 ParallelParty 换队伍
+  S.Scene_Map.prototype.update.call({});
+  t('换队伍后补回线索与七件套', n(27) === 1 && n(16) === 1);
+}
+
+// ===========================================================================
+console.log('\n=== 8. Collect All Clues = false：只发指定 ID ===');
+{
+  const p = Object.assign({}, BASE, { 'Collect All Clues': 'false' });
+  const S = buildRuntime(p);
+  newGame(S);
+  const items = S.$dataItems;
+  const n = id => S.$gameParty.numItems(items[id]);
+  t('线索不再发放', n(27) === 0 && n(33) === 0 && n(141) === 0);
+  t('但仍发放 11~17', n(11) === 1 && n(16) === 1 && n(17) === 1);
+}
+
+// ===========================================================================
+console.log('\n=== 9. 自定义 Extra Item IDs ===');
+{
+  const p = Object.assign({}, BASE, { 'Extra Item IDs': ' 50 , x , 15 ' });
+  const S = buildRuntime(p);
+  newGame(S);
+  const items = S.$dataItems;
+  const n = id => S.$gameParty.numItems(items[id]);
+  t('只发 50 与 15（容错空格 / 垃圾字符）', n(50) === 1 && n(15) === 1);
+  t('未列出的 16/17 不发', n(16) === 0 && n(17) === 0);
+}
+
+// ===========================================================================
+console.log('\n=== 10. 读档不发收集物品 ===');
+{
+  const S = buildRuntime(BASE);
+  S.DataManager.loadGame(1);
+  const Game_Party = S.$gameParty.constructor;
+  S.$gameParty = new Game_Party();
+  S.Scene_Map.prototype.start.call({});
+  S.Scene_Map.prototype.update.call({});
+  t('读档后线索为空', S.$gameParty.numItems(S.$dataItems[27]) === 0);
+  t('读档后七件套为空', S.$gameParty.numItems(S.$dataItems[16]) === 0);
 }
 
 console.log(`\n结果: ${pass} 通过 / ${fail} 失败`);

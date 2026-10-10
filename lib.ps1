@@ -176,10 +176,11 @@ function Get-PluginNames {
 
 # 新插件条目的字面量（单行紧凑 JSON，与 MV 生成格式一致）
 function New-PluginEntryText {
-    $d = '开局资源注入 + 无限可乐饼（380 円 / 99 个）'
+    $d = '开局资源注入 + 无限可乐饼 + 线索全收集（380 円 / 99 个）'
     return '{"name":"' + $PluginName + '","status":true,"description":"' + $d +
            '","parameters":{"Starting Gold":"380","Croquette Item ID":"2",' +
            '"Croquette Amount":"99","Infinite Mode":"always",' +
+           '"Collect All Clues":"true","Extra Item IDs":"11,12,13,14,15,16,17",' +
            '"Notice Face":"qianxu4","Notice Face Index":"0"}}'
 }
 

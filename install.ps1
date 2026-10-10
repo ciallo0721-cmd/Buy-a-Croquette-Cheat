@@ -101,6 +101,8 @@ Say '  补丁已安装：' 'Green'
 Say '    * 新游戏开局  ->  持有 380 円' 'White'
 Say '    * 新游戏开局  ->  99 个市村可乐饼' 'White'
 Say '    * 无限模式    ->  可乐饼数量永不低于 99' 'White'
+Say '    * 开局收集    ->  全部「线索」道具（28 件）' 'White'
+Say '    * 开局发放    ->  北巷七件套：四张碎纸片 + 三件乱码饮料' 'White'
 Say '    * 开局声明    ->  7 页版权声明，按确定键逐页跳过' 'White'
 Say ''
 if (Test-Path -LiteralPath (Join-Path $target 'nw.exe')) {

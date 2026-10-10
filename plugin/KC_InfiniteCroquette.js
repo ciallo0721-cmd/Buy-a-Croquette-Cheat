@@ -1,4 +1,4 @@
-//=============================================================================
+﻿//=============================================================================
 // KC_InfiniteCroquette.js
 //-----------------------------------------------------------------------------
 // 「买个可乐饼吧！」外挂 · 无限可乐饼
@@ -6,6 +6,7 @@
 //   · 新游戏开局：380 円 初始资金
 //   · 新游戏开局：99 个「市村可乐饼」（RPG Maker MV 单格上限）
 //   · 无限模式：可乐饼持有数永不低于设定值
+//   · 开局收集：全部「线索」物品 + 指定额外物品（北巷碎纸片 / 乱码饮料等）
 //   · 开局在「知道了……」与「任务目标」之间插入一张版权声明对话框
 //
 // 设计要点
@@ -19,15 +20,24 @@
 //   5. 声明框 —— 运行时向解释器指令表就地插入 7 页 101/401 指令，
 //      一行一页，与游戏原生对白完全同款（可逐页按键跳过 / 长按快进）；
 //      只在内存生效，不落盘、不改任何 Map*.json
+//   6. 线索/额外物品 —— 同样只在内存发放，给的都是普通道具，只多不少，
+//      不触碰任何开关或变量，剧情推进仍按原样由游戏自己判定
 //=============================================================================
 /*:
- * @plugindesc v2.4.0 「买个可乐饼吧！」外挂：380 円初始资金 + 99 个市村可乐饼（无限）+ 开局声明框（逐页可跳过）
+ * @plugindesc v2.5.0 「买个可乐饼吧！」外挂：380 円 + 99 个市村可乐饼（无限）+ 线索全收集 + 北巷碎纸片/乱码饮料 + 开局声明框
  * @author ciallo0721-cmd
  * @help
  * ============================================================================
  *  买个可乐饼吧！· 无限可乐饼
  * ============================================================================
  *  开新档后自动获得 380 円 与 99 个「市村可乐饼」。
+ *
+ *  收集功能（Collect）：
+ *    Collect All Clues —— true 时开局自动发放【全部】名称以「线索」开头的道具。
+ *    Extra Item IDs    —— 逗号分隔的物品 ID，开局各发 1 个（默认发北巷七件套）：
+ *                         11/12/13/14 = 四张碎纸片（北巷鬼打墙破解提示）
+ *                         15/16/17    = 三件乱码饮料（2 円瓶装 / 5 円盒装 / 3 円杯装）
+ *                         凑齐这七件即可直接照碎纸片提示走完北巷，不必回头搜刮。
  *
  *  无限模式（Infinite Mode）：
  *    always  —— 数量永远不低于设定值（默认，真·无限）
@@ -55,8 +65,29 @@
     var CROQUETTE_N  = Number(params['Croquette Amount']  || 99);
     var MODE         = String(params['Infinite Mode']     || 'always').toLowerCase();
 
+    // 开局收集：全部「线索」物品（名称以「线索」开头）
+    var COLLECT_CLUES = String(params['Collect All Clues'] === undefined
+                               ? 'true' : params['Collect All Clues'])
+                        .toLowerCase() !== 'false';
+
+    // 开局收集：指定 ID 各发 1 个（默认 = 北巷四张碎纸片 + 三件乱码饮料）
+    var EXTRA_IDS = parseIdList(params['Extra Item IDs'] === undefined
+                                ? '11,12,13,14,15,16,17'
+                                : params['Extra Item IDs']);
+
     var pending    = false;   // 新游戏后等待注入
     var watchParty = false;   // 注入已成功，监测 $gameParty 是否被整体替换
+
+    // '11, 12, x, 13' -> [11, 12, 13]
+    function parseIdList(str) {
+        var out = [];
+        var parts = String(str || '').split(',');
+        for (var i = 0; i < parts.length; i++) {
+            var n = parseInt(String(parts[i]).replace(/[^0-9]/g, ''), 10);
+            if (n > 0) { out.push(n); }
+        }
+        return out;
+    }
 
     // 目标道具（$dataItems 未就绪时返回 null）
     function croquette() {
@@ -70,6 +101,32 @@
         if (!scene) { return; }
         var w = scene._goldWindow;
         if (w && typeof w.refresh === 'function') { w.refresh(); }
+    }
+
+    // 单个道具「保证至少 1 个」（幂等）
+    function ensureOne(item) {
+        if (!item || !$gameParty) { return; }
+        if ($gameParty.numItems(item) < 1) {
+            $gameParty.gainItem(item, 1, false);
+        }
+    }
+
+    // 开局收集：全部「线索」+ 指定额外物品
+    function applyBonusItems() {
+        if (!$dataItems || !$gameParty) { return; }
+
+        if (COLLECT_CLUES) {
+            for (var i = 1; i < $dataItems.length; i++) {
+                var it = $dataItems[i];
+                if (it && it.name && String(it.name).indexOf('线索') === 0) {
+                    ensureOne(it);
+                }
+            }
+        }
+
+        for (var k = 0; k < EXTRA_IDS.length; k++) {
+            ensureOne($dataItems[EXTRA_IDS[k]]);
+        }
     }
 
     // 幂等补齐：低于目标值才补，重复调用安全
@@ -88,6 +145,7 @@
             $gameParty.gainGold(START_GOLD - gold);
         }
 
+        applyBonusItems();
         refreshGoldWindow();
         return true;
     }
